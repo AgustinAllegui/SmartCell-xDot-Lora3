@@ -9,7 +9,7 @@
 #include "ISL29011.h"
 #include "example_config.h"
 
-extern mDot* dot;
+extern mDot *dot;
 
 void display_config();
 
@@ -23,7 +23,7 @@ void update_peer_to_peer_config(uint8_t *network_address, uint8_t *network_sessi
 
 void update_network_link_check_config(uint8_t link_check_count, uint8_t link_check_threshold);
 
-void join_network();
+void join_network(const uint8_t maxAttempts = 32);
 
 void sleep_wake_rtc_only(bool deepsleep);
 
