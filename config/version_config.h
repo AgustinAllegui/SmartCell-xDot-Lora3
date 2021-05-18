@@ -9,7 +9,7 @@
 
 #define PROMATIX_VERSION_MAJOR 2
 #define PROMATIX_VERSION_MINOR 6
-#define PROMATIX_VERSION_PATCH 4
+#define PROMATIX_VERSION_PATCH 6
 
 //-------------------------------------------------------------
 // Direcciones en memoria no volatil
@@ -29,6 +29,21 @@
 #define DIR_CUSTOM_CURVE    DIR_INITIAL_NVM_PARAM+10    // 12 Bytes
 
 #define NVM_SAVE_BUFFER_SIZE 10 // tamaño de memoria no volatil sin incluir custom curve
+
+//-------------------------------------------------------------
+// Valores por defecto
+
+// tiempo entre envios
+
+// #define DEFAULT_LOOP_DELAY_HIGH     0x00    // 30 segundos
+// #define DEFAULT_LOOP_DELAY_LOW      0x1e
+// #define DEFAULT_LOOPS_BETWEEN_TX    20      // 20 veces
+
+#define DEFAULT_LOOP_DELAY_HIGH     0x00
+#define DEFAULT_LOOP_DELAY_LOW      10
+#define DEFAULT_LOOPS_BETWEEN_TX    1
+
+
 
 //-------------------------------------------------------------
 // Actives generation of test data (para version PULSE_METER)

@@ -36,7 +36,7 @@ static uint8_t network_key[] = APP_KEY;
 static uint8_t frequency_sub_band = LORA_SUB_BAND;
 static lora::NetworkType network_type = lora::PUBLIC_LORAWAN;
 static uint8_t join_delay = 5;
-static uint8_t ack = 0;
+static uint8_t ack = 1;
 static bool adr = true;
 
 mDot *dot = NULL;
@@ -275,7 +275,7 @@ int main()
 
     pc.baud(9600);
 
-    mts::MTSLog::setLogLevel(mts::MTSLog::TRACE_LEVEL);
+    mts::MTSLog::setLogLevel(mts::MTSLog::INFO_LEVEL);
     //mts::MTSLog::setLogLevel(mts::MTSLog::DEBUG_LEVEL);
 
 #if CHANNEL_PLAN == CP_US915
@@ -308,7 +308,7 @@ int main()
     dot->resetNetworkSession();
 
     // make sure library logging is turned on
-    dot->setLogLevel(mts::MTSLog::TRACE_LEVEL);
+    dot->setLogLevel(mts::MTSLog::INFO_LEVEL);
 
     // attach the custom events handler
     dot->setEvents(&events);
@@ -384,9 +384,9 @@ int main()
             saveBuffer[2] = PROMATIX_VERSION_PATCH;
             dot->nvmWrite(DIR_PROMATIX_VERSION_MAJOR, saveBuffer, 3);
 
-            saveBuffer[0] = 0x00; // loop delay cada 10 minutos
-            saveBuffer[1] = 0x1E;
-            saveBuffer[2] = 20; // 20 loops entre envios
+            saveBuffer[0] = DEFAULT_LOOP_DELAY_HIGH; // loop delay cada 10 minutos
+            saveBuffer[1] = DEFAULT_LOOP_DELAY_LOW;
+            saveBuffer[2] = DEFAULT_LOOPS_BETWEEN_TX; // 20 loops entre envios
             dot->nvmWrite(DIR_LOOP_DELAY, saveBuffer, 3);
 
             saveBuffer[0] = 0x01; // Modo de operacion Fotocelda
@@ -636,7 +636,7 @@ int main()
         // the Dot can't sleep in class C mode
         // it must be waiting for data from the gateway
 
-        uint16_t thisDelay = loopDelay + (rand() % (20 + 1)) - 10;
+        uint16_t thisDelay = loopDelay /*+ (rand() % (20 + 1)) - 10*/;
         logInfo("waiting for %us\n\r", thisDelay);
         for (uint16_t i = 0; i < thisDelay; i++)
         {
