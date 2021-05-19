@@ -30,8 +30,14 @@
 static std::string network_name = "MultiTech";
 static std::string network_passphrase = "MultiTech";
 
+// config for OTA
 static uint8_t network_id[] = APP_EUI;
 static uint8_t network_key[] = APP_KEY;
+
+// config for ABP
+static uint8_t network_address[] = ABP_ADDRESS;
+static uint8_t network_session_key[] = ABP_NET_KEY;
+static uint8_t data_session_key[] = ABP_DATA_KEY;
 
 static uint8_t frequency_sub_band = LORA_SUB_BAND;
 static lora::NetworkType network_type = lora::PUBLIC_LORAWAN;
@@ -313,6 +319,8 @@ int main()
     // attach the custom events handler
     dot->setEvents(&events);
 
+    #if LORA_JOIN_MODE == LORA_MODE_OTA
+
     // update configuration if necessary
     if (dot->getJoinMode() != mDot::OTA)
     {
@@ -322,12 +330,30 @@ int main()
             logError("failed to set network join mode to OTA");
         }
     }
+
     // in OTA and AUTO_OTA join modes, the credentials can be passed to the library as a name and passphrase or an ID and KEY
     // only one method or the other should be used!
     // network ID = crc64(network name)
     // network KEY = cmac(network passphrase)
     // update_ota_config_name_phrase(network_name, network_passphrase, frequency_sub_band, network_type, ack);
     update_ota_config_id_key(network_id, network_key, frequency_sub_band, network_type, ack);
+
+    #elif LORA_JOIN_MODE == LORA_MODE_ABP
+    // Configurar join mode ABP
+
+    isJoined = true;
+    
+    // update configuration if necessary
+    if (dot->getJoinMode() != mDot::MANUAL) {
+        logInfo("changing network join mode to MANUAL");
+        if (dot->setJoinMode(mDot::MANUAL) != mDot::MDOT_OK) {
+            logError("failed to set network join mode to MANUAL");
+        }
+    }
+    
+    update_manual_config(network_address, network_session_key, data_session_key, frequency_sub_band, network_type, ack);
+
+    #endif
 
     // configure the Dot for class C operation
     // the Dot must also be configured on the gateway for class C
@@ -469,8 +495,10 @@ int main()
 
 #if ENABLE_JOIN == 1
     // Intentamos Join y si es exitoso
-    join_network(INITIAL_JOIN_ATEMPTS);
-    isJoined = dot->getNetworkJoinStatus();
+    if(!isJoined){
+        join_network(INITIAL_JOIN_ATEMPTS);
+        isJoined = dot->getNetworkJoinStatus();
+    }
 
 #endif
 
