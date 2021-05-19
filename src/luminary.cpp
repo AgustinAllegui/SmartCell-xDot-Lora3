@@ -342,6 +342,16 @@ int main()
     // Configurar join mode ABP
 
     isJoined = true;
+
+    // config device address como parte baja del devEUI
+    {
+        std::vector<uint8_t> devEui = dot->getDeviceId();
+        network_address[0] = devEui.at(4);
+        network_address[1] = devEui.at(5);
+        network_address[2] = devEui.at(6);
+        network_address[3] = devEui.at(7);
+
+    }
     
     // update configuration if necessary
     if (dot->getJoinMode() != mDot::MANUAL) {
