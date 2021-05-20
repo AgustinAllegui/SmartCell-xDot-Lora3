@@ -284,7 +284,7 @@ int main()
 
     pc.baud(9600);
 
-    mts::MTSLog::setLogLevel(mts::MTSLog::DEBUG_LEVEL);
+    mts::MTSLog::setLogLevel(mts::MTSLog::INFO_LEVEL);
 
 
     #if CHANNEL_PLAN == CP_US915
@@ -317,7 +317,7 @@ int main()
     dot->resetNetworkSession();
 
     // make sure library logging is turned on
-    dot->setLogLevel(mts::MTSLog::DEBUG_LEVEL);
+    dot->setLogLevel(mts::MTSLog::INFO_LEVEL);
 
     // attach the custom events handler
     dot->setEvents(&events);
@@ -743,7 +743,7 @@ int main()
         // the Dot can't sleep in class C mode
         // it must be waiting for data from the gateway
 
-        uint16_t thisDelay = loopDelay /*+ (rand() % (20 + 1)) - 10*/;
+        uint16_t thisDelay = loopDelay + (rand() % (20 + 1)) - 10;
         logInfo("waiting for %us\n\r", thisDelay);
         for (uint16_t i = 0; i < thisDelay; i++)
         {
