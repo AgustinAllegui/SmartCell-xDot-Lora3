@@ -42,7 +42,7 @@ static uint8_t data_session_key[] = ABP_DATA_KEY;
 static uint8_t frequency_sub_band = LORA_SUB_BAND;
 static lora::NetworkType network_type = lora::PUBLIC_LORAWAN;
 static uint8_t join_delay = 5;
-static uint8_t ack = 1;
+static uint8_t ack = LORA_ACK_ENABLE;
 static bool adr = true;
 
 mDot *dot = NULL;
@@ -282,23 +282,23 @@ int main()
     pc.baud(9600);
 
     mts::MTSLog::setLogLevel(mts::MTSLog::INFO_LEVEL);
-    //mts::MTSLog::setLogLevel(mts::MTSLog::DEBUG_LEVEL);
 
-#if CHANNEL_PLAN == CP_US915
+
+    #if CHANNEL_PLAN == CP_US915
     plan = new lora::ChannelPlan_US915();
-#elif CHANNEL_PLAN == CP_AU915
+    #elif CHANNEL_PLAN == CP_AU915
     plan = new lora::ChannelPlan_AU915();
-#elif CHANNEL_PLAN == CP_EU868
+    #elif CHANNEL_PLAN == CP_EU868
     plan = new lora::ChannelPlan_EU868();
-#elif CHANNEL_PLAN == CP_KR920
+    #elif CHANNEL_PLAN == CP_KR920
     plan = new lora::ChannelPlan_KR920();
-#elif CHANNEL_PLAN == CP_AS923
+    #elif CHANNEL_PLAN == CP_AS923
     plan = new lora::ChannelPlan_AS923();
-#elif CHANNEL_PLAN == CP_AS923_JAPAN
+    #elif CHANNEL_PLAN == CP_AS923_JAPAN
     plan = new lora::ChannelPlan_AS923_Japan();
-#elif CHANNEL_PLAN == CP_IN865
+    #elif CHANNEL_PLAN == CP_IN865
     plan = new lora::ChannelPlan_IN865();
-#endif
+    #endif
     assert(plan);
 
     dot = mDot::getInstance(plan);
@@ -415,6 +415,13 @@ int main()
             // la version no coincide, entonces cargar los datos por defecto
             logInfo("Loading default values to memory");
 
+            // resetear el frame counter
+            saveBuffer[0] = 0;
+            saveBuffer[1] = 0;
+            saveBuffer[2] = 0;
+            saveBuffer[3] = 0;
+            dot->nvmWrite(DIR_LAST_FRAME_COUNTER, saveBuffer, 4);
+
             saveBuffer[0] = PROMATIX_VERSION_MAJOR;
             saveBuffer[1] = PROMATIX_VERSION_MINOR;
             saveBuffer[2] = PROMATIX_VERSION_PATCH;
@@ -447,6 +454,19 @@ int main()
             }
         }
     }
+
+    // leer last frame counter
+    if (dot->nvmRead(DIR_LAST_FRAME_COUNTER, saveBuffer, 4))
+    {
+        uint32_t frameCounter = saveBuffer[0] << 24;
+        frameCounter |= saveBuffer[1] << 16;
+        frameCounter |= saveBuffer[2] << 8;
+        frameCounter |= saveBuffer[3];
+
+        dot->setUpLinkCounter(frameCounter + ABP_FCOUNT_SAFE_GAP);
+    }
+    else
+        logError("Failed to read saved uplink frame counter");
 
     // leer loop delay
     if (dot->nvmRead(DIR_LOOP_DELAY, saveBuffer, 3))
@@ -503,14 +523,14 @@ int main()
         wait_us((rand() % (100 + 1)) * 100000); // esperamos un tiempo aleatorio (entre 0 y 10s) antes de mandar el join
     }
 
-#if ENABLE_JOIN == 1
+    #if ENABLE_JOIN == 1
     // Intentamos Join y si es exitoso
     if(!isJoined){
         join_network(INITIAL_JOIN_ATEMPTS);
         isJoined = dot->getNetworkJoinStatus();
     }
 
-#endif
+    #endif
 
     // iniciar timer de medicion de energia
     lastMesureTimer.start();
@@ -530,6 +550,29 @@ int main()
         // guardar datos en NVM si esta pendiente
         if(pendingSaveConfig){
             saveSmartcellConfig();
+        }
+
+        // leer y guardar el frame counter
+        if (dot->nvmRead(DIR_LAST_FRAME_COUNTER, saveBuffer, 4))
+        {
+            uint32_t savedFCount = saveBuffer[0] << 24;
+            savedFCount |= saveBuffer[1] << 16;
+            savedFCount |= saveBuffer[2] << 8;
+            savedFCount |= saveBuffer[3];
+
+            uint32_t currentFCount = dot->getUpLinkCounter();
+
+            if(currentFCount >= (savedFCount + ABP_FCOUNT_SAFE_GAP)){
+
+                logInfo("Saving current uplink frame counter: %lu", currentFCount);
+                saveBuffer[0] = currentFCount & 0xFF000000 >> 24;
+                saveBuffer[1] = currentFCount & 0x00FF0000 >> 16;
+                saveBuffer[2] = currentFCount & 0x0000FF00 >> 8;
+                saveBuffer[3] = currentFCount & 0x000000FF;
+
+                dot->nvmWrite(DIR_LAST_FRAME_COUNTER, saveBuffer, 4);
+            }
+
         }
 
         logDebug("LoopsCount: %u", loopsCount);
@@ -624,6 +667,7 @@ int main()
         logInfo("Last mesure ===== %.0f seconds ago", timeSinceLastMesure);
         logInfo("Period ========== %us", loopDelay);
         logInfo("Uplink in ======= %u loops", loopsToSend - loopsCount);
+        logInfo("Up Frame Count == %lu", dot->getUpLinkCounter());
 
         // check if error
         if (dimming > 0)
