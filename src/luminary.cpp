@@ -54,6 +54,9 @@ Serial pc(USBTX, USBRX);
 LedHandler ledStatus(PA_4, false); // led indicador de estado
 LedHandler ledLora(PA_5, false);   // led Indicador de alimentacion
 
+// Reset config pin
+DigitalIn resetConfigPin(PA_11, PullUp);
+
 // Declaracion componentes
 CurrentSensor currentSensor(PB_12);
 PhotoCell photoCell(PB_13, 0.65, 0.7);
@@ -410,10 +413,29 @@ int main()
     // y comparar con la version actual
     if (dot->nvmRead(DIR_PROMATIX_VERSION_MAJOR, saveBuffer, 3))
     {
+        logDebug("Saved firmware version: %u.%u.%u", saveBuffer[0], saveBuffer[1], saveBuffer[2]);
+
+        // si el pin esta a 0v, forzar el borrado de memoria
+        if(resetConfigPin.read() == 0){
+            logInfo("Forse config reset");
+            saveBuffer[0] = 0;
+            saveBuffer[1] = 0;
+            saveBuffer[2] = 0;
+        }
+
+        // si no coincide lo guardado con lo actual, guardar lo que es por defecto
         if ((saveBuffer[0] != PROMATIX_VERSION_MAJOR) || (saveBuffer[1] != PROMATIX_VERSION_MINOR) || (saveBuffer[2] != PROMATIX_VERSION_PATCH))
         {
             // la version no coincide, entonces cargar los datos por defecto
             logInfo("Loading default values to memory");
+
+            // guardar version actual de firmware
+            if(resetConfigPin.read() != 0){
+                saveBuffer[0] = PROMATIX_VERSION_MAJOR;
+                saveBuffer[1] = PROMATIX_VERSION_MINOR;
+                saveBuffer[2] = PROMATIX_VERSION_PATCH;
+            }
+            dot->nvmWrite(DIR_PROMATIX_VERSION_MAJOR, saveBuffer, 3);
 
             // resetear el frame counter
             logDebug("Saving frame counter: %lu", 0);
@@ -422,11 +444,6 @@ int main()
             saveBuffer[2] = 0;
             saveBuffer[3] = 0;
             dot->nvmWrite(DIR_NEXT_FRAME_COUNTER, saveBuffer, 4);
-
-            saveBuffer[0] = PROMATIX_VERSION_MAJOR;
-            saveBuffer[1] = PROMATIX_VERSION_MINOR;
-            saveBuffer[2] = PROMATIX_VERSION_PATCH;
-            dot->nvmWrite(DIR_PROMATIX_VERSION_MAJOR, saveBuffer, 3);
 
             saveBuffer[0] = DEFAULT_LOOP_DELAY_HIGH; // loop delay cada 10 minutos
             saveBuffer[1] = DEFAULT_LOOP_DELAY_LOW;
