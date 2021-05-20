@@ -9,7 +9,7 @@
 
 #define PROMATIX_VERSION_MAJOR 2
 #define PROMATIX_VERSION_MINOR 7
-#define PROMATIX_VERSION_PATCH 2
+#define PROMATIX_VERSION_PATCH 7
 
 //-------------------------------------------------------------
 // Direcciones en memoria no volatil
@@ -18,7 +18,7 @@
 #define DIR_PROMATIX_VERSION_MINOR 0x01 // 1 Byte
 #define DIR_PROMATIX_VERSION_PATCH 0x02 // 1 Byte
 
-#define DIR_LAST_FRAME_COUNTER 0x03 // 4 bytes
+#define DIR_NEXT_FRAME_COUNTER 0x03 // 4 bytes
 
 
 #define DIR_INITIAL_NVM_PARAM 0x10 // direccion del primer parametro de memoria no volatil

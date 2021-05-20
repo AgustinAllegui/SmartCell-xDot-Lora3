@@ -281,7 +281,7 @@ int main()
 
     pc.baud(9600);
 
-    mts::MTSLog::setLogLevel(mts::MTSLog::INFO_LEVEL);
+    mts::MTSLog::setLogLevel(mts::MTSLog::DEBUG_LEVEL);
 
 
     #if CHANNEL_PLAN == CP_US915
@@ -314,7 +314,7 @@ int main()
     dot->resetNetworkSession();
 
     // make sure library logging is turned on
-    dot->setLogLevel(mts::MTSLog::INFO_LEVEL);
+    dot->setLogLevel(mts::MTSLog::DEBUG_LEVEL);
 
     // attach the custom events handler
     dot->setEvents(&events);
@@ -416,11 +416,12 @@ int main()
             logInfo("Loading default values to memory");
 
             // resetear el frame counter
+            logDebug("Saving frame counter: %lu", 0);
             saveBuffer[0] = 0;
             saveBuffer[1] = 0;
             saveBuffer[2] = 0;
             saveBuffer[3] = 0;
-            dot->nvmWrite(DIR_LAST_FRAME_COUNTER, saveBuffer, 4);
+            dot->nvmWrite(DIR_NEXT_FRAME_COUNTER, saveBuffer, 4);
 
             saveBuffer[0] = PROMATIX_VERSION_MAJOR;
             saveBuffer[1] = PROMATIX_VERSION_MINOR;
@@ -455,15 +456,17 @@ int main()
         }
     }
 
-    // leer last frame counter
-    if (dot->nvmRead(DIR_LAST_FRAME_COUNTER, saveBuffer, 4))
+    // leer next frame counter
+    if (dot->nvmRead(DIR_NEXT_FRAME_COUNTER, saveBuffer, 4))
     {
         uint32_t frameCounter = saveBuffer[0] << 24;
         frameCounter |= saveBuffer[1] << 16;
         frameCounter |= saveBuffer[2] << 8;
         frameCounter |= saveBuffer[3];
-
-        dot->setUpLinkCounter(frameCounter + ABP_FCOUNT_SAFE_GAP);
+        
+        logDebug("Saved frame counter: %lu", frameCounter);
+        dot->setUpLinkCounter(frameCounter);
+        
     }
     else
         logError("Failed to read saved uplink frame counter");
@@ -553,7 +556,7 @@ int main()
         }
 
         // leer y guardar el frame counter
-        if (dot->nvmRead(DIR_LAST_FRAME_COUNTER, saveBuffer, 4))
+        if (dot->nvmRead(DIR_NEXT_FRAME_COUNTER, saveBuffer, 4))
         {
             uint32_t savedFCount = saveBuffer[0] << 24;
             savedFCount |= saveBuffer[1] << 16;
@@ -561,19 +564,24 @@ int main()
             savedFCount |= saveBuffer[3];
 
             uint32_t currentFCount = dot->getUpLinkCounter();
+            logDebug("Current frame counter: %lu", currentFCount);
+            logDebug("Saved frame counter: %lu", savedFCount);
 
-            if(currentFCount >= (savedFCount + ABP_FCOUNT_SAFE_GAP)){
+            if(currentFCount >= savedFCount){
+                currentFCount += ABP_FCOUNT_SAFE_GAP;
+                logInfo("Saving next uplink frame counter: %lu", currentFCount);
+                saveBuffer[0] = static_cast<uint8_t>((currentFCount & 0xFF000000) >> 24);
+                saveBuffer[1] = static_cast<uint8_t>((currentFCount & 0x00FF0000) >> 16);
+                saveBuffer[2] = static_cast<uint8_t>((currentFCount & 0x0000FF00) >> 8);
+                saveBuffer[3] = static_cast<uint8_t>(currentFCount & 0x000000FF);
 
-                logInfo("Saving current uplink frame counter: %lu", currentFCount);
-                saveBuffer[0] = currentFCount & 0xFF000000 >> 24;
-                saveBuffer[1] = currentFCount & 0x00FF0000 >> 16;
-                saveBuffer[2] = currentFCount & 0x0000FF00 >> 8;
-                saveBuffer[3] = currentFCount & 0x000000FF;
+                logDebug("SaveBuffer: [%02X %02X %02X %02X]",
+                        saveBuffer[0], saveBuffer[1], saveBuffer[2], saveBuffer[3]);
 
-                dot->nvmWrite(DIR_LAST_FRAME_COUNTER, saveBuffer, 4);
+                dot->nvmWrite(DIR_NEXT_FRAME_COUNTER, saveBuffer, 4);
             }
-
-        }
+        } else
+            logError("Failed to read saved frame counter");
 
         logDebug("LoopsCount: %u", loopsCount);
         if(loopsCount >= loopsToSend){
